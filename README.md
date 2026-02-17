@@ -1,4 +1,4 @@
-# React Native Weather App - MCDA5550 Assignment 1
+# React Native Weather App 
 
 This application is a Weather Forecast tool built with React Native, Expo, and SQLite. It allows users to view weather for their current location, search for cities, and save up to 5 favorite locations for quick access.
 
