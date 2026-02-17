@@ -14,7 +14,7 @@ This application is a Weather Forecast tool built with React Native, Expo, and S
 
 1.  **Clone the repository:**
     ```bash
-    git clone <YOUR_GITHUB_REPO_LINK_HERE>
+    git clone https://github.com/nkriznar/mcda5550-reactNative
     cd WeatherApp
     ```
 
