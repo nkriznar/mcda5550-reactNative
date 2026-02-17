@@ -7,19 +7,44 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Alert,
-    SafeAreaView,
+    ScrollView,
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
-import { fetchWeather, geocodeCity, getWeatherDescription, getWeatherIcon } from '@/weatherApi';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { fetchWeather, geocodeCity, getWeatherDescription, getWeatherIcon, getWeatherColors } from '@/weatherApi';
 import { saveLocation } from '@/database';
 
+interface CityInfo {
+    name: string;
+    latitude: number;
+    longitude: number;
+    country: string;
+}
+
+interface WeatherData {
+    temperature: number;
+    windspeed: number;
+    weathercode: number;
+}
+
 export default function SearchScreen() {
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+
     const [query, setQuery] = useState('');
-    const [weather, setWeather] = useState(null);
-    const [cityInfo, setCityInfo] = useState(null);
+    const [weather, setWeather] = useState<WeatherData | null>(null);
+    const [cityInfo, setCityInfo] = useState<CityInfo | null>(null);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState<string | null>(null);
+
+    // Dynamic colors
+    const colors = weather
+        ? getWeatherColors(weather.weathercode, isDark)
+        : isDark
+            ? { bg: '#151718', card: '#1e1e1e', accent: '#0a7ea4', text: '#ecedee', subtext: '#9ba1a6' }
+            : { bg: '#f0f4f8', card: '#ffffff', accent: '#0a7ea4', text: '#333', subtext: '#666' };
 
     const handleSearch = async () => {
         if (!query.trim()) return;
@@ -40,8 +65,8 @@ export default function SearchScreen() {
             setCityInfo(geo);
             const data = await fetchWeather(geo.latitude, geo.longitude);
             setWeather(data);
-        } catch (err) {
-            setError(err.message);
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : 'Something went wrong');
         } finally {
             setLoading(false);
         }
@@ -53,61 +78,75 @@ export default function SearchScreen() {
         try {
             saveLocation(cityInfo.name, cityInfo.latitude, cityInfo.longitude);
             Alert.alert('Saved', `${cityInfo.name} has been saved!`);
-        } catch (err) {
-            if (err.message.includes('5')) {
+        } catch (err: unknown) {
+            if (err instanceof Error && err.message.includes('5')) {
                 Alert.alert('Limit Reached', 'Please remove a city first.');
             } else {
-                Alert.alert('Error', err.message);
+                Alert.alert('Error', err instanceof Error ? err.message : 'Unknown error');
             }
         }
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 style={styles.inner}
             >
-                <Text style={styles.heading}>Search Weather</Text>
+                <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+                    <Text style={[styles.heading, { color: colors.text }]}>Search Weather</Text>
 
-                <View style={styles.searchRow}>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Enter city name…"
-                        placeholderTextColor="#999"
-                        value={query}
-                        onChangeText={setQuery}
-                        onSubmitEditing={handleSearch}
-                        returnKeyType="search"
-                    />
-                    <TouchableOpacity style={styles.searchBtn} onPress={handleSearch}>
-                        <Text style={styles.searchBtnText}>Search</Text>
-                    </TouchableOpacity>
-                </View>
-
-                {loading && (
-                    <ActivityIndicator size="large" color="#0a7ea4" style={{ marginTop: 24 }} />
-                )}
-
-                {error && <Text style={styles.errorText}>{error}</Text>}
-
-                {weather && cityInfo && (
-                    <View style={styles.card}>
-                        <Text style={styles.icon}>{getWeatherIcon(weather.weathercode)}</Text>
-                        <Text style={styles.city}>
-                            {cityInfo.name}, {cityInfo.country}
-                        </Text>
-                        <Text style={styles.temp}>{weather.temperature}°C</Text>
-                        <Text style={styles.description}>
-                            {getWeatherDescription(weather.weathercode)}
-                        </Text>
-                        <Text style={styles.wind}>Wind: {weather.windspeed} km/h</Text>
-
-                        <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
-                            <Text style={styles.saveBtnText}>Save Location</Text>
+                    <View style={styles.searchRow}>
+                        <TextInput
+                            style={[
+                                styles.input,
+                                {
+                                    backgroundColor: colors.card,
+                                    color: colors.text,
+                                    borderColor: isDark ? '#333' : '#ddd',
+                                },
+                            ]}
+                            placeholder="Enter city name…"
+                            placeholderTextColor={colors.subtext}
+                            value={query}
+                            onChangeText={setQuery}
+                            onSubmitEditing={handleSearch}
+                            returnKeyType="search"
+                        />
+                        <TouchableOpacity
+                            style={[styles.searchBtn, { backgroundColor: colors.accent }]}
+                            onPress={handleSearch}
+                        >
+                            <Text style={styles.searchBtnText}>Search</Text>
                         </TouchableOpacity>
                     </View>
-                )}
+
+                    {loading && (
+                        <ActivityIndicator size="large" color={colors.accent} style={{ marginTop: 24 }} />
+                    )}
+
+                    {error && <Text style={styles.errorText}>{error}</Text>}
+
+                    {weather && cityInfo && (
+                        <View style={[styles.card, { backgroundColor: colors.card }]}>
+                            <Text style={styles.icon}>{getWeatherIcon(weather.weathercode)}</Text>
+                            <Text style={[styles.city, { color: colors.text }]}>
+                                {cityInfo.name}, {cityInfo.country}
+                            </Text>
+                            <Text style={[styles.temp, { color: colors.accent }]}>{weather.temperature}°C</Text>
+                            <Text style={[styles.description, { color: colors.subtext }]}>
+                                {getWeatherDescription(weather.weathercode)}
+                            </Text>
+                            <Text style={[styles.wind, { color: colors.subtext }]}>
+                                💨 {weather.windspeed} km/h
+                            </Text>
+
+                            <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
+                                <Text style={styles.saveBtnText}>💾 Save Location</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
+                </ScrollView>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -116,17 +155,17 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f0f4f8',
     },
     inner: {
         flex: 1,
+    },
+    scrollContent: {
         padding: 20,
-        paddingTop: 60,
+        paddingTop: 16,
     },
     heading: {
         fontSize: 28,
         fontWeight: '700',
-        color: '#333',
         marginBottom: 16,
     },
     searchRow: {
@@ -135,17 +174,14 @@ const styles = StyleSheet.create({
     },
     input: {
         flex: 1,
-        backgroundColor: '#fff',
-        borderRadius: 12,
+        borderRadius: 14,
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 14,
         fontSize: 16,
         borderWidth: 1,
-        borderColor: '#ddd',
     },
     searchBtn: {
-        backgroundColor: '#0a7ea4',
-        borderRadius: 12,
+        borderRadius: 14,
         paddingHorizontal: 20,
         justifyContent: 'center',
     },
@@ -155,52 +191,47 @@ const styles = StyleSheet.create({
         fontSize: 16,
     },
     errorText: {
-        color: 'red',
+        color: '#e74c3c',
         marginTop: 16,
         fontSize: 15,
         textAlign: 'center',
     },
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 20,
-        padding: 24,
+        borderRadius: 24,
+        padding: 28,
         alignItems: 'center',
         marginTop: 24,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 12,
+        elevation: 6,
     },
     icon: {
-        fontSize: 56,
+        fontSize: 60,
         marginBottom: 8,
     },
     city: {
         fontSize: 22,
         fontWeight: '600',
-        color: '#333',
     },
     temp: {
-        fontSize: 44,
+        fontSize: 46,
         fontWeight: '700',
-        color: '#0a7ea4',
     },
     description: {
         fontSize: 17,
-        color: '#666',
         marginTop: 4,
     },
     wind: {
         fontSize: 15,
-        color: '#888',
-        marginTop: 6,
+        marginTop: 8,
     },
     saveBtn: {
-        marginTop: 20,
+        marginTop: 22,
         backgroundColor: '#27ae60',
-        borderRadius: 12,
-        paddingVertical: 12,
+        borderRadius: 14,
+        paddingVertical: 14,
         paddingHorizontal: 28,
     },
     saveBtnText: {

@@ -6,14 +6,36 @@ import {
     StyleSheet,
     TouchableOpacity,
     ActivityIndicator,
-    SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getSavedLocations, removeLocation } from '@/database';
-import { fetchWeather, getWeatherIcon } from '@/weatherApi';
+import { fetchWeather, getWeatherIcon, getWeatherColors } from '@/weatherApi';
+
+interface SavedLocation {
+    id: number;
+    cityName: string;
+    latitude: number;
+    longitude: number;
+    weather?: {
+        temperature: number;
+        windspeed: number;
+        weathercode: number;
+    } | null;
+}
 
 export default function SavedScreen() {
-    const [locations, setLocations] = useState([]);
+    const colorScheme = useColorScheme();
+    const isDark = colorScheme === 'dark';
+    const router = useRouter();
+
+    const colors = isDark
+        ? { bg: '#151718', card: '#1e1e1e', text: '#ecedee', subtext: '#9ba1a6', accent: '#0a7ea4' }
+        : { bg: '#f0f4f8', card: '#ffffff', text: '#333', subtext: '#666', accent: '#0a7ea4' };
+
+    const [locations, setLocations] = useState<SavedLocation[]>([]);
     const [loading, setLoading] = useState(true);
 
     const loadLocations = useCallback(async () => {
@@ -22,8 +44,8 @@ export default function SavedScreen() {
             const saved = getSavedLocations();
 
             // Fetch weather for all saved locations in parallel
-            const withWeather = await Promise.all(
-                saved.map(async (loc) => {
+            const withWeather: SavedLocation[] = await Promise.all(
+                saved.map(async (loc: SavedLocation) => {
                     try {
                         const weather = await fetchWeather(loc.latitude, loc.longitude);
                         return { ...loc, weather };
@@ -48,48 +70,79 @@ export default function SavedScreen() {
         }, [loadLocations])
     );
 
-    const handleDelete = (id) => {
+    const handleDelete = (id: number) => {
         removeLocation(id);
         loadLocations();
     };
 
-    const renderItem = ({ item }) => (
-        <View style={styles.card}>
-            <View style={styles.cardContent}>
-                <Text style={styles.cityName}>{item.cityName}</Text>
-                {item.weather ? (
-                    <View style={styles.weatherRow}>
-                        <Text style={styles.weatherIcon}>
-                            {getWeatherIcon(item.weather.weathercode)}
-                        </Text>
-                        <Text style={styles.temp}>{item.weather.temperature}°C</Text>
-                        <Text style={styles.wind}>{item.weather.windspeed} km/h</Text>
-                    </View>
-                ) : (
-                    <Text style={styles.noWeather}>Weather unavailable</Text>
-                )}
-            </View>
-            <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
-                <Text style={styles.deleteBtnText}>Delete</Text>
+    const openCityDetail = (item: SavedLocation) => {
+        router.push({
+            pathname: '/city-detail',
+            params: {
+                name: item.cityName,
+                latitude: item.latitude.toString(),
+                longitude: item.longitude.toString(),
+            },
+        });
+    };
+
+    const renderItem = ({ item }: { item: SavedLocation }) => {
+        // Get per-city accent color matching the detail modal
+        const itemColors = item.weather
+            ? getWeatherColors(item.weather.weathercode, isDark)
+            : colors;
+
+        return (
+            <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => openCityDetail(item)}
+                style={[styles.card, { backgroundColor: colors.card }]}
+            >
+                <View style={styles.cardContent}>
+                    <Text style={[styles.cityName, { color: colors.text }]}>{item.cityName}</Text>
+                    {item.weather ? (
+                        <View style={styles.weatherRow}>
+                            <Text style={styles.weatherIcon}>
+                                {getWeatherIcon(item.weather.weathercode)}
+                            </Text>
+                            <Text style={[styles.temp, { color: itemColors.accent }]}>
+                                {item.weather.temperature}°C
+                            </Text>
+                            <Text style={[styles.wind, { color: colors.subtext }]}>
+                                💨 {item.weather.windspeed} km/h
+                            </Text>
+                        </View>
+                    ) : (
+                        <Text style={[styles.noWeather, { color: colors.subtext }]}>Weather unavailable</Text>
+                    )}
+                    <Text style={[styles.tapHint, { color: colors.subtext }]}>Tap for details →</Text>
+                </View>
+                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item.id)}>
+                    <Text style={styles.deleteBtnText}>Delete</Text>
+                </TouchableOpacity>
             </TouchableOpacity>
-        </View>
-    );
+        );
+    };
 
     if (loading) {
         return (
-            <SafeAreaView style={styles.centered}>
-                <ActivityIndicator size="large" color="#0a7ea4" />
+            <SafeAreaView style={[styles.centered, { backgroundColor: colors.bg }]}>
+                <ActivityIndicator size="large" color={colors.accent} />
             </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container}>
-            <Text style={styles.heading}>Saved Locations</Text>
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.bg }]}>
+            <Text style={[styles.heading, { color: colors.text }]}>Saved Locations</Text>
+            <Text style={[styles.subtitle, { color: colors.subtext }]}>
+                {locations.length} / 5 cities saved
+            </Text>
 
             {locations.length === 0 ? (
-                <View style={styles.centered}>
-                    <Text style={styles.emptyText}>
+                <View style={styles.emptyContainer}>
+                    <Text style={styles.emptyIcon}>📍</Text>
+                    <Text style={[styles.emptyText, { color: colors.subtext }]}>
                         No saved locations yet.{'\n'}Use the Search tab to add cities.
                     </Text>
                 </View>
@@ -108,25 +161,34 @@ export default function SavedScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f0f4f8',
-        paddingTop: 60,
+        paddingTop: 16,
         paddingHorizontal: 20,
     },
     centered: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f0f4f8',
     },
     heading: {
         fontSize: 28,
         fontWeight: '700',
-        color: '#333',
+        marginBottom: 4,
+    },
+    subtitle: {
+        fontSize: 14,
         marginBottom: 16,
+    },
+    emptyContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emptyIcon: {
+        fontSize: 48,
+        marginBottom: 12,
     },
     emptyText: {
         fontSize: 16,
-        color: '#888',
         textAlign: 'center',
         lineHeight: 24,
     },
@@ -134,18 +196,17 @@ const styles = StyleSheet.create({
         paddingBottom: 20,
     },
     card: {
-        backgroundColor: '#fff',
-        borderRadius: 16,
+        borderRadius: 18,
         padding: 16,
         marginBottom: 12,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 2,
+        shadowRadius: 6,
+        elevation: 3,
     },
     cardContent: {
         flex: 1,
@@ -153,8 +214,7 @@ const styles = StyleSheet.create({
     cityName: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#333',
-        marginBottom: 4,
+        marginBottom: 6,
     },
     weatherRow: {
         flexDirection: 'row',
@@ -167,22 +227,24 @@ const styles = StyleSheet.create({
     temp: {
         fontSize: 16,
         fontWeight: '600',
-        color: '#0a7ea4',
     },
     wind: {
         fontSize: 14,
-        color: '#888',
     },
     noWeather: {
         fontSize: 14,
-        color: '#aaa',
+        fontStyle: 'italic',
+    },
+    tapHint: {
+        fontSize: 12,
+        marginTop: 6,
         fontStyle: 'italic',
     },
     deleteBtn: {
         backgroundColor: '#e74c3c',
-        borderRadius: 10,
-        paddingVertical: 8,
-        paddingHorizontal: 16,
+        borderRadius: 12,
+        paddingVertical: 10,
+        paddingHorizontal: 18,
         marginLeft: 12,
     },
     deleteBtnText: {
