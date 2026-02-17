@@ -1,50 +1,71 @@
-# Welcome to your Expo app 👋
+# React Native Weather App - MCDA5550 Assignment 1
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+This application is a Weather Forecast tool built with React Native, Expo, and SQLite. It allows users to view weather for their current location, search for cities, and save up to 5 favorite locations for quick access.
 
-## Get started
+## 📱 Features
 
-1. Install dependencies
+* **Current Location:** Automatically fetches and displays weather based on device GPS using `expo-location`.
+* **Search & Display:** Allows users to search for any city to view its current weather details.
+* **Favorites List:** Users can save up to **5 cities** to a persistent list.
+* **Local Storage:** Uses `expo-sqlite` to ensure saved cities persist even after the app is closed or restarted.
+* **Validation:** Prevents saving more than 5 cities or duplicate locations.
 
-   ```bash
-   npm install
-   ```
+## 🛠️ Setup & Installation Instructions
 
-2. Start the app
+1.  **Clone the repository:**
+    ```bash
+    git clone <YOUR_GITHUB_REPO_LINK_HERE>
+    cd WeatherApp
+    ```
 
-   ```bash
-   npx expo start
-   ```
+2.  **Install dependencies:**
+    ```bash
+    npm install
+    ```
 
-In the output, you'll find options to open the app in a
+3.  **Start the application:**
+    ```bash
+    npx expo start
+    ```
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+4.  **Run on Device/Emulator:**
+    * **Physical Device:** Download the **Expo Go** app (iOS/Android) and scan the QR code from the terminal.
+    * **Android Emulator:** Press `a` in the terminal (requires Android Studio).
+    * **iOS Simulator:** Press `i` in the terminal (requires Xcode on macOS).
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 📚 Resources, APIs, and External Libraries
 
-## Get a fresh project
+This project uses the following resources and libraries:
 
-When you're ready, run:
+* **Open-Meteo API:** Used for fetching weather data and geocoding. No API key is required.
+    * *Weather Endpoint:* `https://api.open-meteo.com/v1/forecast`
+    * *Geocoding Endpoint:* `https://geocoding-api.open-meteo.com/v1/search`
+* **expo-location:** Used to request permissions and retrieve the user's current latitude and longitude.
+* **expo-sqlite:** Used to implement the local database for storing favorite cities.
+* **React Navigation:** Used for tab-based navigation between screens.
 
-```bash
-npm run reset-project
-```
+## 🧪 Testing
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+This app has been tested on the following environments:
 
-## Learn more
+* **Physical Device:** [e.g., iPhone 13 (iOS 16) or Samsung Galaxy S21 (Android 13)] *(Please update this with your actual device)*
+* **Emulator:** [e.g., Android Studio Pixel 4 API 30]
+* **Simulator:** [e.g., iOS Simulator iPhone 14 Pro]
 
-To learn more about developing your project with Expo, look at the following resources:
+**Verified Functionality:**
+* Location permissions prompt correctly on reinstall.
+* Saved cities persist after closing and reopening the app.
+* The app correctly prevents saving a 6th city (limit of 5).
+* Navigation between tabs works smoothly.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## ✅ Assumptions
 
-## Join the community
+* **Internet Access:** The app assumes the device has an active internet connection to fetch data from the Open-Meteo API.
+* **Location Permissions:** If location permission is denied, the app is designed to fail gracefully (e.g., by showing an error message or defaulting to a specific location like Halifax).
+* **Database:** The app assumes a clean install will create a new SQLite database file on the device.
 
-Join our community of developers creating universal apps.
+## 👤 Author
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+* **Name:** Nikola Kriznar
+* **Student ID:** [Blank due to public repo]
+* **Course:** MCDA5550 - Mobile App Development
